@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "map_generation.h"
 
 #define LANES 20
 
-int main(){
+void generate_map(){
     srand(time(NULL));
     int lane_types[20];
     //0 - forest, 1 - road, 2 - water, 10 - finish
@@ -38,7 +39,6 @@ int main(){
     }
 
     for(int i = 19; i >= 0; i--){
-        
         printf("%d \n", lane_types[i]);
     }
 }
