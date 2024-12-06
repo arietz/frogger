@@ -1,8 +1,14 @@
 #include <ncurses.h>
-#include "map_generation.h"
+#include <stdlib.h>
 
-#define ROWS 10
-#define COLS 20
+#define ROWS 20
+#define COLS 11
+#define MOVE_DELAY 100 // Movement delay in milliseconds
+
+typedef struct {
+    int x;
+    int y;
+} EntityPlayer;
 
 void initialize_ncurses() {
     initscr();
@@ -10,58 +16,77 @@ void initialize_ncurses() {
     noecho();
     keypad(stdscr, TRUE);
     curs_set(0);
+    nodelay(stdscr, TRUE); // Make getch() non-blocking
 }
 
-void cleanup_ncurses() {
-    endwin();
-}
-
-void render_grid(int player_row, int player_col, int grid[ROWS][COLS]) {
+void render_grid(EntityPlayer player, int grid[ROWS][COLS]) {
     clear();
     for (int i = 0; i < ROWS; ++i) {
         for (int j = 0; j < COLS; ++j) {
             if (grid[i][j] == 1) mvprintw(i, j, "T");
         }
     }
-    mvprintw(player_row, player_col, "F");
+    mvprintw(player.y, player.x, "F");
     refresh();
 }
 
 int main() {
-//     int player_row = ROWS / 2;
-//     int player_col = COLS / 2;
-//     int ch;
-//     int grid[ROWS][COLS] = {0};
-//     grid[3][4] = 1;
-//     grid[5][6] = 1;
+    int ch;
+    int grid[ROWS][COLS] = {0};
+    EntityPlayer player = {19, 6};
 
-//     initialize_ncurses();
+    // Blockades
+    grid[3][4] = 1;
+    grid[5][6] = 1;
 
-//     while (1) {
-//         render_grid(player_row, player_col, grid);
-//         ch = getch();
-//         switch (ch) {
-//             case KEY_UP:
-//                 if (player_row > 0 && grid[player_row - 1][player_col] == 0) player_row--;
-//                 break;
-//             case KEY_DOWN:
-//                 if (player_row < ROWS - 1 && grid[player_row + 1][player_col] == 0) player_row++;
-//                 break;
-//             case KEY_LEFT:
-//                 if (player_col > 0 && grid[player_row][player_col - 1] == 0) player_col--;
-//                 break;
-//             case KEY_RIGHT:
-//                 if (player_col < COLS - 1 && grid[player_row][player_col + 1] == 0) player_col++;
-//                 break;
-//             case 'q':
-//                 cleanup_ncurses();
-//                 return 0;
-//             default:
-//                 break;
-//         }
-//     }
+    initialize_ncurses();
 
-//     cleanup_ncurses();
-    generate_map();
+    int gotchar = 0;
+
+    while (1) {
+        if (!gotchar) {
+            ch = getch();
+            gotchar = 1; // Mark that input has been fetched
+        }
+
+        render_grid(player, grid);
+
+        // Process input
+        switch (ch) {
+            case KEY_LEFT:
+                if (player.x > 0 && grid[player.y][player.x - 1] == 0) {
+                    player.x--;
+                }
+                break;
+            case KEY_RIGHT:
+                if (player.x < COLS - 1 && grid[player.y][player.x + 1] == 0) {
+                    player.x++;
+                }
+                break;
+            case KEY_UP:
+                if (player.y > 0 && grid[player.y - 1][player.x] == 0) {
+                    player.y--;
+                }
+                break;
+            case KEY_DOWN:
+                if (player.y < ROWS - 1 && grid[player.y + 1][player.x] == 0) {
+                    player.y++;
+                }
+                break;
+            case 'q':
+                endwin();
+                exit(0);
+            default:
+                gotchar = 0; // Reset gotchar for unrecognized input
+                break;
+        }
+
+        // Reset gotchar after processing the input
+        gotchar = 0;
+
+        napms(100); // Small delay to prevent busy-waiting
+    }
+
+    endwin();
     return 0;
 }
