@@ -2,43 +2,42 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+
+//custom headers
 #include "map_generation.h"
+#include "config.h"
 
-#define LANES 20
+void generate_lanes(unsigned int seed, int lanes[ROWS]){
+    //if given seed, use it
+    srand((seed != 0) ? seed : time(NULL));
 
-void generate_map(){
-    srand(time(NULL));
-    int lane_types[20];
-    //0 - forest, 1 - road, 2 - water, 10 - finish
-    lane_types[0] = 0;
-    lane_types[19] = 10;
+    //static values of first and last lane
+    lanes[0] = 0;
+    lanes[ROWS-1] = 10;
 
+    //combo system for higher chance of the same lane order
     int combo = 1;
 
-    for(int i = 1; i < 19; i++){
-        int random = rand() % 16;
-        
+    for(int i = 1; i < ROWS - 1; i++){  
+
         //new combo
         if(combo == 1){
-            lane_types[i] = rand() % 3;
+            int temp = rand() % 6;
+
+            //50% chance for road, 33% chance for river, 17% chance for forest
+            if(temp <= 2) lanes[i] = 1;
+            else if(temp == 3) lanes[i] = 0;
+            else lanes[i] = 2;
         }
-        //check combo
-        else if(rand() % 16 > pow(2,combo) && lane_types[i-1] != 0){
-            lane_types[i] = lane_types[i-1];
+        //check if combo persists and it isn't forest combo
+        else if(rand() % 32 > pow(2,combo) && lanes[i-1] != 0){
+            lanes[i] = lanes[i-1];
             combo++;
         }
+        //combo is broken, for gameplay's sake we set lane to forest
         else {
-            int temp = rand() % 5;
-            if(temp == 0) lane_types[i] = 0;
-            else if(temp == 1 || temp == 2) lane_types[i] = 1;
-            else lane_types[i] = 2;
-            
+            lanes[i] = 0;
             combo = 1;
         }
-
-    }
-
-    for(int i = 19; i >= 0; i--){
-        printf("%d \n", lane_types[i]);
     }
 }

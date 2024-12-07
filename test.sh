@@ -1,2 +1,2 @@
-gcc -o map_generation map_generation.c -lncurses -lm
-./map_generation
+gcc -o testing testing.c -lncurses -lm
+./testing

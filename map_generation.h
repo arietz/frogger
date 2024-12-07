@@ -1,6 +1,6 @@
-#ifndef HELPER_H
-#define HELPER_H
+#ifndef MAP_GENERATION_H
+#define MAP_GENERATION_H
 
-void generate_map(); // Function prototype
+void generate_lanes(unsigned int seed, int lanes[]);
 
 #endif
