@@ -5,6 +5,7 @@
 //custom header files
 #include "map_generation.h"
 #include "rendering.h"
+#include "cars.h"
 #include "config.h"
 #include "entities.h"
 
@@ -23,54 +24,6 @@ void set_movement_delays(long * movement_opportunity, long last_movement[4]){
     movement_opportunity[1] = now - last_movement[1];
     movement_opportunity[2] = now - last_movement[2];
     movement_opportunity[3] = now - last_movement[3];
-}
-
-void remove_car(EntityCar * car){
-    car->row = 0;
-    car->col = 0;
-    car->direction = 0;
-    car->speed = 0;
-    car->counter = 0;
-    car->exists = 0;
-}
-
-void init_car(EntityCar * car, int values[6]){
-    car->row = values[0];
-    car->col = values[1];
-    car->direction = values[2];
-    car->speed = values[3];
-    car->counter = values[4];
-    car->exists = values[5];
-}
-
-void handle_car_collision(EntityCar * car, int grid[ROWS][COLS]){
-    int potential_col = (car->direction) ? car->col + 1 : car->col - 1;
-
-    switch (grid[car->row][potential_col])
-    {
-        case 3:     //frog
-            //lose
-            break;
-        case 1:     //another car
-            //dont move
-            break; 
-        default:    //nothing, so car moves
-            car->col = potential_col;
-            break;
-    }
-}
-
-void move_car(EntityCar * car, int grid[ROWS][COLS]){
-    //removes car from grid
-    grid[car->row][car->col] = 0;
-
-    //check car collision
-    handle_car_collision(car, grid);
-
-    //if car goes out of bounds, remove it
-    if (car->col == -1 || car->col == COLS) remove_car(car);
-    //else add car to the grid
-    else grid[car->row][car->col] = 1;
 }
 
 int col_inbounds_check(int col, int change) {
@@ -149,36 +102,38 @@ void handle_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
     if(row_move || col_move) handle_player_collisions(player, grid, row_move, col_move);
 }
 
-void map_reset(int grid[ROWS][COLS], int lanes[ROWS], EntityPlayer * player){
+void map_reset(int grid[ROWS][COLS], int lanes[ROWS][3], EntityPlayer * player, int seed){
     //set player position
     player->col = COLS / 2;
-    // player->row = ROWS - 1;
-    player->row = 0;
+    player->row = ROWS - 1;
 
-    // generate_lanes(0, lanes);
-    // generate_trees();
+    generate_lanes(seed, lanes);
     
-    // lanes[ROWS - 1] = 0;
-    lanes[3] = 1;
+    
 
     for (int i = 0; i < ROWS; i++){
         for (int j = 0; j < COLS; j++){
-            if (lanes[i] == 1) grid[i][j] = 0;
-            else grid[i][j] = lanes[i];
+
+            //basic 
+            if (lanes[i][0] == 1) grid[i][j] = 0;  //for road set grid to 0
+            else grid[i][j] = lanes[i][0];         //forest = 0, river = -1, finish = 10
         }
     }
+
+    generate_trees(seed, lanes, grid);
     
 }
 
 int main() {
     initialize_ncurses();
 
-    int lanes[ROWS] = {0};
-    /* lanes logic for element values
-    0   -> forest, contains blockades
-    1   -> road, contains different types of cars
-    -1   -> river, contains boats
-    10  -> finish line, completes level
+    int lanes[ROWS][3] = {0};
+    /* roads logic
+    if in lanes array there is a road or rivers 
+    we can find details about them here
+    [0] -> type, forest = 0, road = 1, river = -1, finish = 10
+    [1] -> direction, to right = 1, to left = 0
+    [2] -> lowest speed (only for cars)
     */
 
     int grid[ROWS][COLS] = {0};
@@ -198,17 +153,7 @@ int main() {
     EntityCar cars[MAX_CARS] = {0};
     int cars_num = 0;
 
-
-    //temporary 
-    cars[0].row = 3;
-    cars[0].col = 15;
-    cars[0].direction = 0;
-    cars[0].speed = 50;
-    cars[0].exists = 1;
-    cars[0].counter = 1;
-    cars_num = 1;
-
-    map_reset(grid, lanes, &player);
+    map_reset(grid, lanes, &player, SEED);
 
     //movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
     long movement_delays[4] = {0};

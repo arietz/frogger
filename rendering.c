@@ -11,7 +11,7 @@ void initialize_ncurses() {
     nodelay(stdscr, TRUE); // Make getch() non-blocking
 }
 
-void render_map(EntityPlayer player, EntityCar cars[], int cars_num, int grid[ROWS][COLS], int lanes[ROWS]) {
+void render_map(EntityPlayer player, EntityCar cars[], int cars_num, int grid[ROWS][COLS], int lanes[ROWS][3]) {
     clear();
 
     //top border
@@ -26,9 +26,9 @@ void render_map(EntityPlayer player, EntityCar cars[], int cars_num, int grid[RO
         //playable space
         for (int j = 0; j < COLS; ++j) {
             if (grid[i][j] == 1) mvprintw(i + 1, j + 1, "#");       //tree / blockade
-            else if (lanes[i] == 0) mvprintw(i + 1, j + 1, ".");    //forest
-            else if (lanes[i] == -1) mvprintw(i + 1, j + 1, "~");   //water
-            else if (lanes[i] == 10) mvprintw(i + 1, j + 1, "="); //finish
+            else if (lanes[i][0] == 0) mvprintw(i + 1, j + 1, ".");    //forest
+            else if (lanes[i][0] == -1) mvprintw(i + 1, j + 1, "~");   //water
+            else if (lanes[i][0] == 10) mvprintw(i + 1, j + 1, "=");   //finish
         }
 
         mvprintw(i + 1, COLS + 1, "|"); //right border
