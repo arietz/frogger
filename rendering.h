@@ -2,6 +2,6 @@
 #define RENDERING_H
 
 void initialize_ncurses();
-void render_grid();
+void render_map();
 
 #endif

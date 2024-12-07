@@ -6,6 +6,6 @@
 #define PLAYER_DELAY 75 
 #define CAR_DELAY 15
 
-#define MAX_CARS
+#define MAX_CARS 30
 
 #endif // CONFIG_H

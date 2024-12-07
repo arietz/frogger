@@ -9,7 +9,7 @@
 #include "entities.h"
 
 
-// Get the current time in milliseconds
+//gets current time in milliseconds
 long current_time_ms() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -25,15 +25,52 @@ void set_movement_delays(long * movement_opportunity, long last_movement[4]){
     movement_opportunity[3] = now - last_movement[3];
 }
 
-void move_car(EntityCar * car, int grid[ROWS][COLS]){
-    if (car->direction) car->col++;
-    else car->col--;
+void remove_car(EntityCar * car){
+    car->row = 0;
+    car->col = 0;
+    car->direction = 0;
+    car->speed = 0;
+    car->counter = 0;
+    car->exists = 0;
+}
 
-    if (car->col == 0 || car->col == COLS - 1){
-        car->exists = 0;
+void init_car(EntityCar * car, int values[6]){
+    car->row = values[0];
+    car->col = values[1];
+    car->direction = values[2];
+    car->speed = values[3];
+    car->counter = values[4];
+    car->exists = values[5];
+}
+
+void handle_car_collision(EntityCar * car, int grid[ROWS][COLS]){
+    int potential_col = (car->direction) ? car->col + 1 : car->col - 1;
+
+    switch (grid[car->row][potential_col])
+    {
+        case 3:     //frog
+            //lose
+            break;
+        case 1:     //another car
+            //dont move
+            break; 
+        default:    //nothing, so car moves
+            car->col = potential_col;
+            break;
     }
+}
 
-    //todo handling out of bound cars
+void move_car(EntityCar * car, int grid[ROWS][COLS]){
+    //removes car from grid
+    grid[car->row][car->col] = 0;
+
+    //check car collision
+    handle_car_collision(car, grid);
+
+    //if car goes out of bounds, remove it
+    if (car->col == -1 || car->col == COLS) remove_car(car);
+    //else add car to the grid
+    else grid[car->row][car->col] = 1;
 }
 
 int col_inbounds_check(int col, int change) {
@@ -60,20 +97,24 @@ void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int ro
 
     // Handle collisions based on grid contents
     switch (grid[potential_row][potential_col]) {
-        case -1: // Water
-            // End game logic (placeholder)
-            break;
-        case 0: // Empty space
+        case 0:     //empty space
             grid[player->row][player->col] = 0; // Clear old position
             player->row = potential_row;
             player->col = potential_col;
             grid[player->row][player->col] = 3; // Mark new position
             break;
-        case 1: // Blockades
+        case -1:    //water
+            // End game logic (placeholder)
+            break;
+        
+        case 1:     //blockades
             // Stay in place (do nothing)
             break;
-        case 2: // Transport
+        case 2:     //transport
             // Transport logic (placeholder)
+            break;
+        case 10:    //finish line
+            // finish logiv
             break;
         default:
             break;
@@ -108,11 +149,24 @@ void handle_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
     if(row_move || col_move) handle_player_collisions(player, grid, row_move, col_move);
 }
 
-void map_reset(int grid[ROWS][COLS], EntityPlayer * player){
+void map_reset(int grid[ROWS][COLS], int lanes[ROWS], EntityPlayer * player){
     //set player position
     player->col = COLS / 2;
-    player->row = ROWS - 1;
+    // player->row = ROWS - 1;
+    player->row = 0;
 
+    // generate_lanes(0, lanes);
+    // generate_trees();
+    
+    // lanes[ROWS - 1] = 0;
+    lanes[3] = 1;
+
+    for (int i = 0; i < ROWS; i++){
+        for (int j = 0; j < COLS; j++){
+            if (lanes[i] == 1) grid[i][j] = 0;
+            else grid[i][j] = lanes[i];
+        }
+    }
     
 }
 
@@ -123,19 +177,20 @@ int main() {
     /* lanes logic for element values
     0   -> forest, contains blockades
     1   -> road, contains different types of cars
-    2   -> river, contains boats
+    -1   -> river, contains boats
     10  -> finish line, completes level
     */
-   
+
     int grid[ROWS][COLS] = {0};
     /* grid logic for element values
-    -1  -> water, frog will drown in water
     0   -> empty space, safe for frog
+    -1  -> water, kills upon contact
     1   -> blockades, such as cars, trees etc.
     2   -> transport, such as boat or taxi
     3   -> frog 
     4
     5   -> frog on transport vehicle
+    10  -> finish line
     */
 
     //entity creation    
@@ -143,7 +198,17 @@ int main() {
     EntityCar cars[MAX_CARS] = {0};
     int cars_num = 0;
 
-    map_reset(grid, &player);
+
+    //temporary 
+    cars[0].row = 3;
+    cars[0].col = 15;
+    cars[0].direction = 0;
+    cars[0].speed = 50;
+    cars[0].exists = 1;
+    cars[0].counter = 1;
+    cars_num = 1;
+
+    map_reset(grid, lanes, &player);
 
     //movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
     long movement_delays[4] = {0};
@@ -151,9 +216,10 @@ int main() {
 
     int key;
 
+    //game loop for map
     while (1) {
         // Render the grid and player
-        render_grid(player, cars, cars_num, grid);
+        render_map(player, cars, cars_num, grid, lanes);
         
         set_movement_delays(movement_delays, last_movement);
 
@@ -180,8 +246,7 @@ int main() {
             }
         }
 
-
-        napms(10); // Small delay to prevent busy-waiting
+        napms(10); //small delay
     }
 
     endwin();

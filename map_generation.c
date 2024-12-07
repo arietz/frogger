@@ -12,8 +12,8 @@ void generate_lanes(unsigned int seed, int lanes[ROWS]){
     srand((seed != 0) ? seed : time(NULL));
 
     //static values of first and last lane
-    lanes[0] = 0;
-    lanes[ROWS-1] = 10;
+    lanes[0] = 10;      //finish 
+    lanes[ROWS-1] = 0;  //start
 
     //combo system for higher chance of the same lane order
     int combo = 1;
@@ -25,9 +25,9 @@ void generate_lanes(unsigned int seed, int lanes[ROWS]){
             int temp = rand() % 6;
 
             //50% chance for road, 33% chance for river, 17% chance for forest
-            if(temp <= 2) lanes[i] = 1;
-            else if(temp == 3) lanes[i] = 0;
-            else lanes[i] = 2;
+            if(temp <= 2) lanes[i] = 1;         //road
+            else if(temp == 3) lanes[i] = 0;    //forest
+            else lanes[i] = -1;                 //river
         }
         //check if combo persists and it isn't forest combo
         else if(rand() % 32 > pow(2,combo) && lanes[i-1] != 0){
