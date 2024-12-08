@@ -99,5 +99,5 @@ void load_graphics2(const char *filename, Config * cfg) {
 void load_config(Config * cfg){
     load_options("options.txt", cfg);
     load_graphics1("graphics1x1.txt", cfg);
-    //load_graphics2("graphics2x2.txt", cfg);
+    load_graphics2("graphics2x2.txt", cfg);
 }

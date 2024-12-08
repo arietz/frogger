@@ -1,5 +1,6 @@
 #include <ncurses.h>
 #include <locale.h>
+#include <string.h>
 
 // Custom headers
 #include "entities.h"
@@ -28,16 +29,33 @@ char get_lane_symbol(int type, Config * cfg) {
     }
 }
 
-void render_cell(int row, int col, char symbol, Config * cfg) {
+void render_2x2(int row, int col, char sprite[2][2]){
+    // Render the 2x2 sprite
+    mvprintw(2 * row + 1, 2 * col + 1, "%c%c", sprite[0][0], sprite[0][1]);
+    mvprintw(2 * row + 2, 2 * col + 1, "%c%c", sprite[1][0], sprite[1][1]);
+}
+
+void render_cell(int row, int col, char symbol, Config *cfg) {
     if (cfg->RENDER_MODE_2X2) {
-        // Render in 2x2 block mode
-        mvprintw(2 * row + 1, 2 * col + 1, "%c%c", symbol, symbol);
-        mvprintw(2 * row + 2, 2 * col + 1, "%c%c", symbol, symbol);
+        // Select 2x2 sprite based on the symbola
+        if (symbol == cfg->SYMBOL_WATER) render_2x2(row, col, cfg->SYMBOL_WATER_2X2);
+        else if (symbol == cfg->SYMBOL_FOREST) render_2x2(row, col, cfg->SYMBOL_FOREST_2X2);
+        else if (symbol == cfg->SYMBOL_FINISH) render_2x2(row, col, cfg->SYMBOL_FINISH_2X2);
+        else if (symbol == cfg->SYMBOL_TREE) render_2x2(row, col, cfg->SYMBOL_TREE_2X2);
+        else if (symbol == cfg->SYMBOL_CAR) render_2x2(row, col, cfg->SYMBOL_CAR_2X2);
+        else if (symbol == cfg->SYMBOL_FRIENDLY_CAR) render_2x2(row, col, cfg->SYMBOL_FRIENDLY_CAR_2X2);
+        else if (symbol == cfg->SYMBOL_TAXI) render_2x2(row, col, cfg->SYMBOL_TAXI_2X2);
+        else if (symbol == cfg->SYMBOL_PLAYER) render_2x2(row, col, cfg->SYMBOL_PLAYER_2X2);
+        else {
+            char sprite[2][2] = {{' ',' '},{' ',' '}};
+            render_2x2(row, col, sprite);
+        }  
     } else {
         // Render in 1x1 block mode
         mvprintw(row + 1, col + 1, "%c", symbol);
     }
 }
+
 
 void clear_border(int ** grid, int ** lanes, Config * cfg){
     for (int i = 0; i < cfg->ROWS; i++) {
