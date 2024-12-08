@@ -2,6 +2,7 @@
     "files.associations": {
         "stdio.h": "c",
         "entities.h": "c",
-        "random": "c"
+        "random": "c",
+        "ncurses.h": "c"
     }
 }

@@ -29,11 +29,11 @@ void initialize_ncurses() {
     init_pair(4, COLOR_GREEN, COLOR_BLACK);     //tree
     init_pair(5, COLOR_RED, COLOR_BLACK);       //car
     init_pair(6, COLOR_MAGENTA, COLOR_BLACK);    //friendly car
-    init_pair(10, COLOR_GREEN, COLOR_BLACK);    //player
+    init_pair(10, COLOR_WHITE, COLOR_BLACK);    //player
     init_pair(11, COLOR_BLUE, COLOR_BLACK);   //taxi
-    init_pair(12, COLOR_GREEN, COLOR_BLACK);    //taxi with player
+    init_pair(12, COLOR_WHITE, COLOR_BLACK);    //taxi with player
     init_pair(13, COLOR_YELLOW, COLOR_BLUE);    //boat
-    init_pair(14, COLOR_GREEN, COLOR_BLUE);     //boat with player
+    init_pair(14, COLOR_WHITE, COLOR_BLUE);     //boat with player
     
     cbreak();
     noecho();
@@ -182,7 +182,7 @@ void render_border_bottom(Config * cfg){
     attroff(COLOR_PAIR(cfg->COLOR_FOREST));
 }
 
-void render_map(int ** grid, int ** lanes, Config * cfg) {
+void render_map(int ** grid, int ** lanes, Config * cfg, int * level, int * points) {
     clear();
 
     // Top border
@@ -207,9 +207,12 @@ void render_map(int ** grid, int ** lanes, Config * cfg) {
         render_border_sides(i + 1, cfg->COLS + 1, cfg);
     }
 
-    // Bottom border
+    //bottom border
     render_border_bottom(cfg);
 
+    //stats
+    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 2 : cfg->ROWS + 1, 2, "Level: %d  Points: %d", *level, *points);
+    
     //author
     mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 3 : cfg->ROWS + 2, 2, "Author: Aleksander Rietz, ID: 203274");
 
@@ -217,7 +220,7 @@ void render_map(int ** grid, int ** lanes, Config * cfg) {
 }
 
 void render_entities(int ** grid, int ** lanes, EntityPlayer *player, EntityCar * cars, int *cars_num, Config * cfg) {
-    // Draw the player
+    //draw the player
     if (player->exists) {
         char symbol = get_lane_symbol(lanes[player->prev_row][0], cfg);
         render_cell(player->prev_row, player->prev_col, symbol, cfg, grid, lanes);
@@ -228,15 +231,15 @@ void render_entities(int ** grid, int ** lanes, EntityPlayer *player, EntityCar 
         render_cell(player->row, player->col, symbol, cfg, grid, lanes);
     }
 
-    // Draw the cars
+    //draw the cars
     for (int i = 0; i < *cars_num; i++) {
         if (cars[i].exists) {
-            // Clear the car's previous position
+            //clear the car's previous position
             char lane_symbol = get_lane_symbol(lanes[cars[i].row][0], cfg);
             int difference = (cars[i].direction) ? 1 : -1;
             int prev_col = cars[i].col - difference;
 
-            // Check if the previous column is within bounds
+            //check if the previous column is within bounds
             if ((prev_col >= 0 && prev_col < cfg->COLS) && (grid[cars[i].row][prev_col] == 0 || grid[cars[i].row][prev_col] == -1)) {
                 render_cell(cars[i].row, prev_col, lane_symbol, cfg, grid, lanes);
             }
@@ -254,8 +257,6 @@ void render_entities(int ** grid, int ** lanes, EntityPlayer *player, EntityCar 
     }
 
     clear_border(grid, lanes, cfg);
-
-    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 2 : cfg->ROWS + 1, 2, "Cars: %d", *cars_num);
 
     refresh(); // Render all changes to the screen
 }
