@@ -1,4 +1,6 @@
 #include <ncurses.h>
+
+//custom headers
 #include "entities.h"
 #include "config.h"
 
@@ -39,8 +41,10 @@ void render_map(EntityPlayer player, EntityCar cars[], int cars_num, int grid[RO
         mvprintw(ROWS + 1, j, "-");
     }
 
+    mvprintw(ROWS + 2, 3, "Cars: %d", cars_num);
+
     // Draw the player
-    mvprintw(player.row + 1, player.col + 1, "F");
+    if (player.exists) mvprintw(player.row + 1, player.col + 1, "F");
 
     // Draw the cars
     for (int i = 0; i < cars_num; i++) {

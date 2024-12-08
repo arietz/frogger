@@ -42,14 +42,14 @@ int row_inbounds_check(int row, int change) {
     return row; // Return current position if out of bounds
 }
 
-
-
 void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int row_move, int col_move) {
     int potential_row = row_inbounds_check(player->row, row_move);
     int potential_col = col_inbounds_check(player->col, col_move);
 
     // Handle collisions based on grid contents
     switch (grid[potential_row][potential_col]) {
+        case 10:    //finish line
+            player->finished = 1;
         case 0:     //empty space
             grid[player->row][player->col] = 0; // Clear old position
             player->row = potential_row;
@@ -66,15 +66,12 @@ void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int ro
         case 2:     //transport
             // Transport logic (placeholder)
             break;
-        case 10:    //finish line
-            // finish logiv
-            break;
         default:
             break;
     }
 }
 
-void handle_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
+void handle_player_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
     int row_move = 0;
     int col_move = 0;
     
@@ -102,27 +99,63 @@ void handle_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
     if(row_move || col_move) handle_player_collisions(player, grid, row_move, col_move);
 }
 
-void map_reset(int grid[ROWS][COLS], int lanes[ROWS][3], EntityPlayer * player, int seed){
-    //set player position
-    player->col = COLS / 2;
-    player->row = ROWS - 1;
 
-    generate_lanes(seed, lanes);
+void gameloop(EntityPlayer * player, EntityCar cars[], int grid[ROWS][COLS], int lanes[ROWS][3], int * cars_num){
     
+    //movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
+    long movement_delays[4] = {0};
+    long last_movement[4] = {0};
+    int spawn_counter = 0;
     
+    int key;
 
-    for (int i = 0; i < ROWS; i++){
-        for (int j = 0; j < COLS; j++){
+    //game loop for map
+    while (!player->finished && player->exists) {
+        // Render the grid and player
+        //render_map(*player, cars, *cars_num, grid, lanes);
+        
+        set_movement_delays(movement_delays, last_movement);
 
-            //basic 
-            if (lanes[i][0] == 1) grid[i][j] = 0;  //for road set grid to 0
-            else grid[i][j] = lanes[i][0];         //forest = 0, river = -1, finish = 10
+        key = getch();
+
+        // Process input for player movement
+        if (movement_delays[0] >= PLAYER_DELAY) {
+            handle_player_movement(player, grid, key);
+
+            // Reset movement timer only if a valid key was processed
+            if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) {
+                last_movement[0] = current_time_ms();
+            }
         }
-    }
 
-    generate_trees(seed, lanes, grid);
-    
+        //process car movement
+        if (movement_delays[1] >= CAR_DELAY) {
+            for (int i = 0; i < *cars_num; i++) {
+                if (cars[i].exists && (cars[i].counter >= cars[i].speed)) {
+                    move_car(&cars[i], grid, player);
+                    cars[i].counter = 1;
+                } else {
+                    cars[i].counter++;
+                }
+            }
+
+            //compact the cars array to remove unused slots
+            compact_cars_array(cars, cars_num);
+
+            //spawn car
+            if (spawn_counter == 10) {
+                spawn_car(lanes, grid, cars_num, cars);
+                spawn_counter = 0;
+            }
+            else spawn_counter++;
+        }
+
+        render_map(*player, cars, *cars_num, grid, lanes);
+
+        napms(10); //small delay
+    }
 }
+
 
 int main() {
     initialize_ncurses();
@@ -133,7 +166,7 @@ int main() {
     we can find details about them here
     [0] -> type, forest = 0, road = 1, river = -1, finish = 10
     [1] -> direction, to right = 1, to left = 0
-    [2] -> lowest speed (only for cars)
+    [2] -> lane speed
     */
 
     int grid[ROWS][COLS] = {0};
@@ -149,51 +182,19 @@ int main() {
     */
 
     //entity creation    
-    EntityPlayer player;
+    EntityPlayer player = {0,0,1,0};
     EntityCar cars[MAX_CARS] = {0};
     int cars_num = 0;
 
-    map_reset(grid, lanes, &player, SEED);
-
-    //movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
-    long movement_delays[4] = {0};
-    long last_movement[4] = {0};
-
-    int key;
-
-    //game loop for map
-    while (1) {
-        // Render the grid and player
-        render_map(player, cars, cars_num, grid, lanes);
-        
-        set_movement_delays(movement_delays, last_movement);
-
-        key = getch();
-
-        // Process input for player movement
-        if (movement_delays[0] >= PLAYER_DELAY) {
-            handle_movement(&player, grid, key);
-
-            // Reset movement timer only if a valid key was processed
-            if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) {
-                last_movement[0] = current_time_ms();
-            }
-        }
-
-        //process car movement
-        if (movement_delays[1] >= CAR_DELAY){
-            for(int i = 0; i < cars_num; i++){
-                if(cars[i].exists && (cars[i].counter >= cars[i].speed)){
-                    move_car(&cars[i], grid);
-                    cars[i].counter = 1;
-                }
-                else cars[i].counter ++;
-            }
-        }
-
-        napms(10); //small delay
+    while (player.exists) {
+        map_reset(grid, lanes, &player, cars, &cars_num, SEED);
+        gameloop(&player, cars, grid, lanes, &cars_num);
+        player.finished = 0;
+        clear_cars_array(cars, &cars_num);
     }
 
+    napms(2000);
+    
     endwin();
     return 0;
 }

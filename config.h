@@ -6,7 +6,7 @@
 #define PLAYER_DELAY 75 
 #define CAR_DELAY 15
 
-#define MAX_CARS 30
+#define MAX_CARS 60
 #define SEED 0
 
 #endif // CONFIG_H
