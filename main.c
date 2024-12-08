@@ -26,25 +26,27 @@ void set_movement_delays(long * movement_opportunity, long last_movement[4]){
     movement_opportunity[3] = now - last_movement[3];
 }
 
-int col_inbounds_check(int col, int change) {
+int col_inbounds_check(int col, int change, Config * cfg) {
     int new_col = col + change;
-    if (new_col >= 0 && new_col < COLS) { // Logical AND for valid range
+    if (new_col >= 0 && new_col < cfg->COLS) { // Logical AND for valid range
         return new_col;
     }
     return col; // Return current position if out of bounds
 }
 
-int row_inbounds_check(int row, int change) {
+int row_inbounds_check(int row, int change, Config * cfg) {
     int new_row = row + change;
-    if (new_row >= 0 && new_row < ROWS) { // Ensure within grid bounds
+    if (new_row >= 0 && new_row < cfg->ROWS) { // Ensure within grid bounds
         return new_row;
     }
     return row; // Return current position if out of bounds
 }
 
-void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int row_move, int col_move) {
-    int potential_row = row_inbounds_check(player->row, row_move);
-    int potential_col = col_inbounds_check(player->col, col_move);
+void handle_player_collisions(EntityPlayer *player, int ** grid, int row_move, int col_move, Config * cfg) {
+    int potential_row = row_inbounds_check(player->row, row_move, cfg);
+    int potential_col = col_inbounds_check(player->col, col_move, cfg);
+    player->prev_row = player->row;
+    player->prev_col = player->col;
 
     // Handle collisions based on grid contents
     switch (grid[potential_row][potential_col]) {
@@ -57,9 +59,8 @@ void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int ro
             grid[player->row][player->col] = 3; // Mark new position
             break;
         case -1:    //water
-            // End game logic (placeholder)
+            player->exists = 0;
             break;
-        
         case 1:     //blockades
             // Stay in place (do nothing)
             break;
@@ -71,7 +72,7 @@ void handle_player_collisions(EntityPlayer *player, int grid[ROWS][COLS], int ro
     }
 }
 
-void handle_player_movement(EntityPlayer * player, int grid[ROWS][COLS], int key){
+void handle_player_movement(EntityPlayer * player, int ** grid, int key, Config * cfg){
     int row_move = 0;
     int col_move = 0;
     
@@ -96,31 +97,28 @@ void handle_player_movement(EntityPlayer * player, int grid[ROWS][COLS], int key
     }
 
     //if changes are to be made check collisions
-    if(row_move || col_move) handle_player_collisions(player, grid, row_move, col_move);
+    if(row_move || col_move) handle_player_collisions(player, grid, row_move, col_move, cfg);
 }
 
 
-void gameloop(EntityPlayer * player, EntityCar cars[], int grid[ROWS][COLS], int lanes[ROWS][3], int * cars_num){
-    
-    //movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
+void gameloop(EntityPlayer *player, EntityCar * cars, int **grid, int **lanes, int *cars_num, Config * cfg) {
+    // Movement delay for [0] - player, [1] - cars, [2] - boats, [3] - cars
     long movement_delays[4] = {0};
     long last_movement[4] = {0};
     int spawn_counter = 0;
-    
-    int key;
 
-    //game loop for map
+    int key;
+    render_map(grid, lanes, cfg);
+
+    // Game loop for map
     while (!player->finished && player->exists) {
-        // Render the grid and player
-        //render_map(*player, cars, *cars_num, grid, lanes);
-        
         set_movement_delays(movement_delays, last_movement);
 
         key = getch();
 
         // Process input for player movement
-        if (movement_delays[0] >= PLAYER_DELAY) {
-            handle_player_movement(player, grid, key);
+        if (movement_delays[0] >= cfg->PLAYER_DELAY) {
+            handle_player_movement(player, grid, key, cfg);
 
             // Reset movement timer only if a valid key was processed
             if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) {
@@ -128,39 +126,58 @@ void gameloop(EntityPlayer * player, EntityCar cars[], int grid[ROWS][COLS], int
             }
         }
 
-        //process car movement
-        if (movement_delays[1] >= CAR_DELAY) {
+        // Process car movement
+        if (movement_delays[1] >= cfg->CAR_DELAY) {
             for (int i = 0; i < *cars_num; i++) {
                 if (cars[i].exists && (cars[i].counter >= cars[i].speed)) {
-                    move_car(&cars[i], grid, player);
+                    move_car(&cars[i], grid, lanes, player, cfg);
                     cars[i].counter = 1;
                 } else {
                     cars[i].counter++;
                 }
             }
 
-            //compact the cars array to remove unused slots
-            compact_cars_array(cars, cars_num);
+            // Compact the cars array to remove unused slots
+            compact_cars_array(cars, cars_num, cfg);
 
-            //spawn car
-            if (spawn_counter == 10) {
-                spawn_car(lanes, grid, cars_num, cars);
+            // Spawn car
+            if (spawn_counter == 3) {
+                spawn_car(lanes, grid, cars_num, cars, cfg);
                 spawn_counter = 0;
+            } else {
+                spawn_counter++;
             }
-            else spawn_counter++;
+
+            last_movement[1] = current_time_ms();
         }
 
-        render_map(*player, cars, *cars_num, grid, lanes);
+        render_entities(grid, lanes, player, cars, cars_num, cfg);
 
-        napms(10); //small delay
+        napms(10); // Small delay
     }
 }
 
 
+
 int main() {
     initialize_ncurses();
+    Config * cfg = malloc(sizeof(Config));
+    load_config(cfg);
 
-    int lanes[ROWS][3] = {0};
+    // Dynamically allocate memory
+    int **lanes = malloc(cfg->ROWS * sizeof(int *));
+    for (int i = 0; i < cfg->ROWS; i++) {
+        lanes[i] = calloc(3, sizeof(int));
+    }
+
+    int **grid = malloc(cfg->ROWS * sizeof(int *));
+    for (int i = 0; i < cfg->ROWS; i++) {
+        grid[i] = calloc(cfg->COLS, sizeof(int));
+    }
+
+    EntityCar *cars = malloc(cfg->MAX_CARS * sizeof(EntityCar));
+
+
     /* roads logic
     if in lanes array there is a road or rivers 
     we can find details about them here
@@ -169,7 +186,6 @@ int main() {
     [2] -> lane speed
     */
 
-    int grid[ROWS][COLS] = {0};
     /* grid logic for element values
     0   -> empty space, safe for frog
     -1  -> water, kills upon contact
@@ -181,20 +197,43 @@ int main() {
     10  -> finish line
     */
 
+   /*
+    0   -> tree
+    1   -> car
+    2   -> friendly car
+    3   -> taxi
+    4   -> boat
+    5   -> frog
+    6   -> water
+    7   -> road
+    8   -> forest
+    9   -> empty
+   */
+
     //entity creation    
-    EntityPlayer player = {0,0,1,0};
-    EntityCar cars[MAX_CARS] = {0};
+    EntityPlayer player = {0,0,1,0,0,0};
+
     int cars_num = 0;
 
     while (player.exists) {
-        map_reset(grid, lanes, &player, cars, &cars_num, SEED);
-        gameloop(&player, cars, grid, lanes, &cars_num);
+        map_reset(grid, lanes, &player, cars, &cars_num, cfg->SEED, cfg);
+        gameloop(&player, cars, grid, lanes, &cars_num, cfg);
         player.finished = 0;
-        clear_cars_array(cars, &cars_num);
+        clear_cars_array(cars, &cars_num, cfg);
     }
 
-    napms(2000);
-    
+    napms(100);
+
+    // Free allocated memory
+    for (int i = 0; i < cfg->ROWS; i++) {
+        free(lanes[i]);
+        free(grid[i]);
+    }
+    free(lanes);
+    free(grid);
+    free(cars);
+    free(cfg);
+
     endwin();
     return 0;
 }

@@ -6,6 +6,8 @@ typedef struct {
     int col;
     int exists;
     int finished;
+    int prev_row;
+    int prev_col;
 } EntityPlayer;
 
 typedef struct {
@@ -17,7 +19,8 @@ typedef struct {
 
     int counter;    //for counting how many CAR_DELAYS have passed
     int exists;
-    int type;
+    int type;       // 0 - normal, 1 - friendly, 2 - taxi/boat, 3 - taxi/boat with frog
+    int prev_col;
 } EntityCar;
 
 #endif // ENTITIES_H

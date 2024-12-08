@@ -1,55 +1,143 @@
 #include <ncurses.h>
+#include <locale.h>
 
-//custom headers
+// Custom headers
 #include "entities.h"
 #include "config.h"
 
 void initialize_ncurses() {
+    setlocale(LC_ALL, "");
     initscr();
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
     curs_set(0);
-    nodelay(stdscr, TRUE); // Make getch() non-blocking
+    nodelay(stdscr, TRUE);
 }
 
-void render_map(EntityPlayer player, EntityCar cars[], int cars_num, int grid[ROWS][COLS], int lanes[ROWS][3]) {
+char get_lane_symbol(int type, Config * cfg) {
+    switch (type) {
+        case -1:
+            return cfg->SYMBOL_WATER;
+        case 0:
+            return cfg->SYMBOL_FOREST;
+        case 10:
+            return cfg->SYMBOL_FINISH;
+        default:
+            return ' ';
+    }
+}
+
+void render_cell(int row, int col, char symbol, Config * cfg) {
+    if (cfg->RENDER_MODE_2X2) {
+        // Render in 2x2 block mode
+        mvprintw(2 * row + 1, 2 * col + 1, "%c%c", symbol, symbol);
+        mvprintw(2 * row + 2, 2 * col + 1, "%c%c", symbol, symbol);
+    } else {
+        // Render in 1x1 block mode
+        mvprintw(row + 1, col + 1, "%c", symbol);
+    }
+}
+
+void clear_border(int ** grid, int ** lanes, Config * cfg){
+    for (int i = 0; i < cfg->ROWS; i++) {
+        char symbol = get_lane_symbol(lanes[i][0], cfg);
+        int temp = (lanes[i][0] == 1) ? 0 : lanes[i][0];
+        if (grid[i][0] == temp) render_cell(i, 0, symbol, cfg);
+        if (grid[i][cfg->COLS - 1] == temp) render_cell(i, cfg->COLS - 1, symbol, cfg);
+    } 
+}
+
+void render_border_top(Config * cfg){
+    mvprintw(0, 0, "┌");
+    for (int j = 1; j <= (cfg->RENDER_MODE_2X2 ? 2 * cfg->COLS : cfg->COLS); ++j) {
+        mvprintw(0, j, "─");
+    }
+    mvprintw(0, (cfg->RENDER_MODE_2X2 ? 2 * cfg->COLS : cfg->COLS) + 1, "┐");
+}
+
+void render_border_sides(int row, int col, Config * cfg){
+    if (cfg->RENDER_MODE_2X2) {
+        mvprintw(2 * row, col ? 2 * col - 1 : 2 * col, "│");
+        mvprintw(2 * row - 1, col ? 2 * col - 1 : 2 * col, "│");
+    }
+    else mvprintw(row, col, "│");
+}   
+
+void render_border_bottom(Config * cfg){
+    mvprintw(cfg->RENDER_MODE_2X2 ? 2 * cfg->ROWS + 1 : cfg->ROWS + 1, 0, "└");
+    for (int j = 1; j <= (cfg->RENDER_MODE_2X2 ? 2 * cfg->COLS : cfg->COLS); ++j) {
+        mvprintw(cfg->RENDER_MODE_2X2 ? 2 * cfg->ROWS + 1 : cfg->ROWS + 1, j, "─");
+    }
+    mvprintw(cfg->RENDER_MODE_2X2 ? 2 * cfg->ROWS + 1 : cfg->ROWS + 1, (cfg->RENDER_MODE_2X2 ? 2 * cfg->COLS : cfg->COLS) + 1, "┘");
+}
+
+void render_map(int ** grid, int ** lanes, Config * cfg) {
     clear();
 
-    //top border
-    for (int j = 0; j <= COLS + 1; ++j) {
-        mvprintw(0, j, "-");
-    }
+    // Top border
+    render_border_top(cfg);
 
-    //draw playable space with borders
-    for (int i = 0; i < ROWS; ++i) {
-        mvprintw(i + 1, 0, "|"); //left border
+    // Playable space with borders
+    for (int i = 0; i < cfg->ROWS; ++i) {
+        //left border
+        render_border_sides(i + 1, 0, cfg); 
 
-        //playable space
-        for (int j = 0; j < COLS; ++j) {
-            if (grid[i][j] == 1) mvprintw(i + 1, j + 1, "#");       //tree / blockade
-            else if (lanes[i][0] == 0) mvprintw(i + 1, j + 1, ".");    //forest
-            else if (lanes[i][0] == -1) mvprintw(i + 1, j + 1, "~");   //water
-            else if (lanes[i][0] == 10) mvprintw(i + 1, j + 1, "=");   //finish
+        for (int j = 0; j < cfg->COLS; ++j) {
+            // Lane default
+            render_cell(i, j, get_lane_symbol(lanes[i][0], cfg), cfg);
+
+            // Tree/blockade
+            if (grid[i][j] == 1) {
+                render_cell(i, j, cfg->SYMBOL_TREE, cfg);
+            }
         }
 
-        mvprintw(i + 1, COLS + 1, "|"); //right border
+        //right border
+        render_border_sides(i + 1, cfg->COLS + 1, cfg);
     }
 
-    //bottom border
-    for (int j = 0; j <= COLS + 1; ++j) {
-        mvprintw(ROWS + 1, j, "-");
-    }
-
-    mvprintw(ROWS + 2, 3, "Cars: %d", cars_num);
-
-    // Draw the player
-    if (player.exists) mvprintw(player.row + 1, player.col + 1, "F");
-
-    // Draw the cars
-    for (int i = 0; i < cars_num; i++) {
-        if (cars[i].exists) mvprintw(cars[i].row + 1, cars[i].col + 1, "D");
-    }
+    // Bottom border
+    render_border_bottom(cfg);
 
     refresh();
+}
+
+void render_entities(int ** grid, int ** lanes, EntityPlayer *player, EntityCar * cars, int *cars_num, Config * cfg) {
+    // Draw the player
+    if (player->exists) {
+        char symbol = get_lane_symbol(lanes[player->prev_row][0], cfg);
+        render_cell(player->prev_row, player->prev_col, symbol, cfg);
+        render_cell(player->row, player->col, cfg->SYMBOL_PLAYER, cfg);
+    }
+
+    // Draw the cars
+    for (int i = 0; i < *cars_num; i++) {
+        if (cars[i].exists) {
+            // Clear the car's previous position
+            char lane_symbol = get_lane_symbol(lanes[cars[i].row][0], cfg);
+            int difference = (cars[i].direction) ? 1 : -1;
+            int prev_col = cars[i].col - difference;
+
+            // Check if the previous column is within bounds
+            if (prev_col >= 0 && prev_col < cfg->COLS) {
+                render_cell(cars[i].row, prev_col, lane_symbol, cfg);
+            }
+
+            // select the symbol for car
+            char symbol = cfg->SYMBOL_CAR;
+            if (cars[i].type == 1) symbol = cfg->SYMBOL_FRIENDLY_CAR;
+            else if (cars[i].type == 2) symbol = cfg->SYMBOL_TAXI;
+
+            //render the car
+            render_cell(cars[i].row, cars[i].col, symbol, cfg);
+        }
+    }
+
+    clear_border(grid, lanes, cfg);
+
+    // Display car count
+    mvprintw(cfg->RENDER_MODE_2X2 ? 2 * cfg->ROWS + 3 : cfg->ROWS + 2, 3, "Cars: %d", *cars_num);
+
+    refresh(); // Render all changes to the screen
 }
