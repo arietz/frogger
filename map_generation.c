@@ -8,8 +8,9 @@
 #include "entities.h"
 #include "cars.h"
 
-void map_reset(int ** grid, int ** lanes, EntityPlayer * player, EntityCar * cars, int * cars_num, int seed, Config * cfg){
+void map_reset(int ** grid, int ** lanes, EntityPlayer * player, EntityCar * cars, int * cars_num, int seed, Config * cfg, EntityStork * stork){
     clear_map(grid, lanes, cfg);
+    remove_stork(stork);
 
     generate_lanes(seed, lanes, cfg);
 
@@ -23,6 +24,7 @@ void map_reset(int ** grid, int ** lanes, EntityPlayer * player, EntityCar * car
     generate_trees(seed, lanes, grid, cfg);
     generate_cars(lanes, grid, cars, cars_num, cfg);
     generate_boats(lanes, grid, cars, cars_num, cfg);
+    spawn_stork(cfg, stork);
 
     //set player position
     player->col = cfg->COLS / 2;
@@ -198,4 +200,23 @@ int car_type(){
     type = (rand() % 25 == 0) ? 2 : type; // taxi
 
     return type;
+}
+
+void spawn_stork(Config * cfg, EntityStork * stork){
+    int row = rand() % cfg->ROWS;
+    int col = (rand() % 2) ? 0 : cfg->COLS - 1;
+
+    stork->row = row;
+    stork->col = col;
+    stork->prev_col = col;
+    stork->prev_row = row;
+    stork->exists = 1;
+}
+
+void remove_stork(EntityStork * stork){
+    stork->row = 0;
+    stork->col = 0;
+    stork->prev_col = 0;
+    stork->prev_row = 0;
+    stork->exists = 0;
 }

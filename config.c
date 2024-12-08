@@ -6,10 +6,6 @@
 
 void load_options(const char *filename, Config * cfg) {
     FILE *file = fopen(filename, "r");
-    if (!file) {
-        fprintf(stderr, "Could not open config file: %s. Using default values.\n", filename);
-        return;
-    }
 
     char line[256];
     while (fgets(line, sizeof(line), file)) {
@@ -20,6 +16,7 @@ void load_options(const char *filename, Config * cfg) {
             else if (strcmp(key, "COLS") == 0) cfg->COLS = atoi(value);
             else if (strcmp(key, "PLAYER_DELAY") == 0) cfg->PLAYER_DELAY = atoi(value);
             else if (strcmp(key, "CAR_DELAY") == 0) cfg->CAR_DELAY = atoi(value);
+            else if (strcmp(key, "STORK_DELAY") == 0) cfg->STORK_DELAY = atoi(value);
             else if (strcmp(key, "MAX_CARS") == 0) cfg->MAX_CARS = atoi(value);
             else if (strcmp(key, "RIVERS") == 0) cfg->RIVERS = atoi(value);
             else if (strcmp(key, "SEED") == 0) cfg->SEED = atoi(value);
@@ -34,10 +31,6 @@ void load_options(const char *filename, Config * cfg) {
 
 void load_graphics1(const char *filename, Config * cfg) {
     FILE *file = fopen(filename, "r");
-    if (!file) {
-        fprintf(stderr, "Could not open config file: %s. Using default values.\n", filename);
-        return;
-    }
 
     char line[256];
     while (fgets(line, sizeof(line), file)) {
@@ -52,6 +45,7 @@ void load_graphics1(const char *filename, Config * cfg) {
             else if (strcmp(key, "SYMBOL_FRIENDLY_CAR") == 0) cfg->SYMBOL_FRIENDLY_CAR = value[0];
             else if (strcmp(key, "SYMBOL_TAXI") == 0) cfg->SYMBOL_TAXI = value[0];
             else if (strcmp(key, "SYMBOL_PLAYER") == 0) cfg->SYMBOL_PLAYER = value[0];
+            else if (strcmp(key, "SYMBOL_STORK") == 0) cfg->SYMBOL_STORK= value[0];
         }
     }
 
@@ -66,33 +60,30 @@ void assign_2x2_sprite(const char *value, char sprite[2][2]) {
 
 void load_graphics2(const char *filename, Config * cfg) {
     FILE *file = fopen(filename, "r");
-    if (!file) {
-        fprintf(stderr, "Could not open config file: %s. Using default values.\n", filename);
-        return;
-    }
 
     char line[256];
     while (fgets(line, sizeof(line), file)) {
-        char key[64];
-        char value[64];
-        if (sscanf(line, "%63[^=]=%63s", key, value) == 2) {
-            if (strcmp(key, "SYMBOL_WATER_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_WATER_2X2);
-            } else if (strcmp(key, "SYMBOL_FOREST_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_FOREST_2X2);
-            } else if (strcmp(key, "SYMBOL_FINISH_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_FINISH_2X2);
-            } else if (strcmp(key, "SYMBOL_TREE_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_TREE_2X2);
-            } else if (strcmp(key, "SYMBOL_CAR_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_CAR_2X2);
-            } else if (strcmp(key, "SYMBOL_FRIENDLY_CAR_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_FRIENDLY_CAR_2X2);
-            } else if (strcmp(key, "SYMBOL_TAXI_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_TAXI_2X2);
-            } else if (strcmp(key, "SYMBOL_PLAYER_2X2") == 0) {
-                assign_2x2_sprite(value, cfg->SYMBOL_PLAYER_2X2);
-            }
+        char k[64];
+        char v[64];
+        if (sscanf(line, "%63[^=]=%63s", k, v) == 2) {
+            if (strcmp(k, "SYMBOL_WATER_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_WATER_2X2);
+            else if (strcmp(k, "SYMBOL_FOREST_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_FOREST_2X2);
+            else if (strcmp(k, "SYMBOL_FINISH_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_FINISH_2X2);
+            else if (strcmp(k, "SYMBOL_TREE_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_TREE_2X2);
+            else if (strcmp(k, "SYMBOL_CAR_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_CAR_2X2);
+            else if (strcmp(k, "SYMBOL_FRIENDLY_CAR_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_FRIENDLY_CAR_2X2);
+            else if (strcmp(k, "SYMBOL_TAXI_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_TAXI_2X2);
+            else if (strcmp(k, "SYMBOL_PLAYER_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_PLAYER_2X2);
+            else if (strcmp(k, "SYMBOL_STORK_2X2") == 0)
+                assign_2x2_sprite(v, cfg->SYMBOL_STORK_2X2);
         }
     }
 
@@ -114,4 +105,5 @@ void load_config(Config * cfg){
     cfg->COLOR_CAR = 5;
     cfg->COLOR_FRIENDLY_CAR = 6;
     cfg->COLOR_PLAYER = 10;
+    cfg->COLOR_STORK = 20;
 }

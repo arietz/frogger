@@ -10,5 +10,7 @@ void generate_lanes();
 void fill_lanes();
 void spawn_car();
 int car_type();
+void spawn_stork();
+void remove_stork();
 
 #endif

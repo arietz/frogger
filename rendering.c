@@ -28,12 +28,13 @@ void initialize_ncurses() {
     //object colors
     init_pair(4, COLOR_GREEN, COLOR_BLACK);     //tree
     init_pair(5, COLOR_RED, COLOR_BLACK);       //car
-    init_pair(6, COLOR_MAGENTA, COLOR_BLACK);    //friendly car
+    init_pair(6, COLOR_MAGENTA, COLOR_BLACK);   //friendly car
     init_pair(10, COLOR_WHITE, COLOR_BLACK);    //player
-    init_pair(11, COLOR_BLUE, COLOR_BLACK);   //taxi
+    init_pair(11, COLOR_BLUE, COLOR_BLACK);     //taxi
     init_pair(12, COLOR_WHITE, COLOR_BLACK);    //taxi with player
     init_pair(13, COLOR_YELLOW, COLOR_BLUE);    //boat
     init_pair(14, COLOR_WHITE, COLOR_BLUE);     //boat with player
+    init_pair(20, COLOR_BLACK, COLOR_WHITE);    //stork
     
     cbreak();
     noecho();
@@ -85,6 +86,7 @@ int get_color(int row, int col, char symbol, Config *cfg, int ** grid, int ** la
     else if (symbol == cfg->SYMBOL_CAR)             color_pair = cfg->COLOR_CAR;
     else if (symbol == cfg->SYMBOL_FRIENDLY_CAR)    color_pair = cfg->COLOR_FRIENDLY_CAR;
     else if (symbol == cfg->SYMBOL_PLAYER)          color_pair = cfg->COLOR_PLAYER;
+    else if (symbol == cfg->SYMBOL_STORK)           color_pair = cfg->COLOR_STORK;
     else if (symbol == cfg->SYMBOL_TAXI){
         //if its taxi
         if(lanes[row][0] == 1){
@@ -101,6 +103,23 @@ int get_color(int row, int col, char symbol, Config *cfg, int ** grid, int ** la
     return color_pair;
 }
 
+void select_render(int row, int col, char symbol, Config *cfg, int ** grid, int ** lanes){
+    if (symbol == cfg->SYMBOL_WATER) render_2x2(row, col, cfg->SYMBOL_WATER_2X2);
+    else if (symbol == cfg->SYMBOL_FOREST) render_2x2(row, col, cfg->SYMBOL_FOREST_2X2);
+    else if (symbol == cfg->SYMBOL_FINISH) render_2x2(row, col, cfg->SYMBOL_FINISH_2X2);
+    else if (symbol == cfg->SYMBOL_TREE) render_2x2(row, col, cfg->SYMBOL_TREE_2X2);
+    else if (symbol == cfg->SYMBOL_CAR) render_2x2(row, col, cfg->SYMBOL_CAR_2X2);
+    else if (symbol == cfg->SYMBOL_FRIENDLY_CAR) render_2x2(row, col, cfg->SYMBOL_FRIENDLY_CAR_2X2);
+    else if (symbol == cfg->SYMBOL_TAXI) render_2x2(row, col, cfg->SYMBOL_TAXI_2X2);
+    else if (symbol == cfg->SYMBOL_PLAYER) render_2x2(row, col, cfg->SYMBOL_PLAYER_2X2);
+    else if (symbol == cfg->SYMBOL_STORK) render_2x2(row, col, cfg->SYMBOL_STORK_2X2);
+    else {
+        //empty space
+        char sprite[2][2] = {{' ',' '},{' ',' '}};
+        render_2x2(row, col, sprite);
+    }  
+}
+
 void render_cell(int row, int col, char symbol, Config *cfg, int ** grid, int ** lanes) {
     
     //turn on color
@@ -109,19 +128,8 @@ void render_cell(int row, int col, char symbol, Config *cfg, int ** grid, int **
 
     if (cfg->RENDER_MODE_2X2) {
         //2x2 mode
-        if (symbol == cfg->SYMBOL_WATER) render_2x2(row, col, cfg->SYMBOL_WATER_2X2);
-        else if (symbol == cfg->SYMBOL_FOREST) render_2x2(row, col, cfg->SYMBOL_FOREST_2X2);
-        else if (symbol == cfg->SYMBOL_FINISH) render_2x2(row, col, cfg->SYMBOL_FINISH_2X2);
-        else if (symbol == cfg->SYMBOL_TREE) render_2x2(row, col, cfg->SYMBOL_TREE_2X2);
-        else if (symbol == cfg->SYMBOL_CAR) render_2x2(row, col, cfg->SYMBOL_CAR_2X2);
-        else if (symbol == cfg->SYMBOL_FRIENDLY_CAR) render_2x2(row, col, cfg->SYMBOL_FRIENDLY_CAR_2X2);
-        else if (symbol == cfg->SYMBOL_TAXI) render_2x2(row, col, cfg->SYMBOL_TAXI_2X2);
-        else if (symbol == cfg->SYMBOL_PLAYER) render_2x2(row, col, cfg->SYMBOL_PLAYER_2X2);
-        else {
-            //empty space
-            char sprite[2][2] = {{' ',' '},{' ',' '}};
-            render_2x2(row, col, sprite);
-        }  
+        select_render(row, col, symbol, cfg, grid, lanes);
+        
     } else {
         //1x1 mode
         if (row == 0 && col % 2 == 1){
@@ -137,7 +145,6 @@ void render_cell(int row, int col, char symbol, Config *cfg, int ** grid, int **
     attroff(COLOR_PAIR(color_pair));
     
 }
-
 
 void clear_border(int ** grid, int ** lanes, Config * cfg){
     for (int i = 0; i < cfg->ROWS; i++) {
@@ -211,52 +218,71 @@ void render_map(int ** grid, int ** lanes, Config * cfg, int * level, int * poin
     render_border_bottom(cfg);
 
     //stats
-    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 2 : cfg->ROWS + 1, 2, "Level: %d  Points: %d", *level, *points);
+    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 2 : cfg->ROWS + 2, 2, "Level: %d  Points: %d", *level, *points);
     
     //author
-    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 3 : cfg->ROWS + 2, 2, "Author: Aleksander Rietz, ID: 203274");
+    mvprintw(cfg->RENDER_MODE_2X2 ? cfg->ROWS * 2 + 3 : cfg->ROWS + 3, 2, "Author: Aleksander Rietz, ID: 203274");
 
     refresh();
 }
 
-void render_entities(int ** grid, int ** lanes, EntityPlayer *player, EntityCar * cars, int *cars_num, Config * cfg) {
-    //draw the player
+char get_grid_symbol(int row, int col, int ** grid, int ** lanes, Config * cfg){
+    int g = grid[row][col];
+    int l = lanes[row][0];
+
+    if (g == -1) return cfg->SYMBOL_WATER;
+    else if (g == 0 && l == 0) return cfg->SYMBOL_FOREST;
+    else if (g == 10) return cfg->SYMBOL_FINISH;
+    else if (g == 1 && l == 0) return cfg->SYMBOL_TREE;
+    else if (g == 1 && l == 1) return cfg->SYMBOL_CAR;
+    else if (g == 1 && l == 2) return cfg->SYMBOL_TAXI;
+    else return ' ';
+}
+
+void render_player(EntityPlayer *player, Config *cfg, int **grid, int **lanes) {
     if (player->exists) {
         char symbol = get_lane_symbol(lanes[player->prev_row][0], cfg);
         render_cell(player->prev_row, player->prev_col, symbol, cfg, grid, lanes);
         render_cell(player->row, player->col, cfg->SYMBOL_PLAYER, cfg, grid, lanes);
-    }
-    else {
+    } else {
         char symbol = get_lane_symbol(lanes[player->row][0], cfg);
         render_cell(player->row, player->col, symbol, cfg, grid, lanes);
     }
+}
 
-    //draw the cars
+void render_cars(EntityCar *cars, int *cars_num, Config *cfg, int **grid, int **lanes) {
     for (int i = 0; i < *cars_num; i++) {
         if (cars[i].exists) {
-            //clear the car's previous position
             char lane_symbol = get_lane_symbol(lanes[cars[i].row][0], cfg);
             int difference = (cars[i].direction) ? 1 : -1;
             int prev_col = cars[i].col - difference;
-
-            //check if the previous column is within bounds
             if ((prev_col >= 0 && prev_col < cfg->COLS) && (grid[cars[i].row][prev_col] == 0 || grid[cars[i].row][prev_col] == -1)) {
                 render_cell(cars[i].row, prev_col, lane_symbol, cfg, grid, lanes);
             }
-
-            // select the symbol for car
-            char symbol = cfg->SYMBOL_CAR;
-            if (cars[i].type == 1) symbol = cfg->SYMBOL_FRIENDLY_CAR;
-            else if (cars[i].type == 2) symbol = cfg->SYMBOL_TAXI;
-            else if (cars[i].type == 3) symbol = cfg->SYMBOL_TAXI;
-
-
-            //render the car
+            char symbol = (cars[i].type == 1) ? cfg->SYMBOL_FRIENDLY_CAR :
+                          (cars[i].type == 2 || cars[i].type == 3) ? cfg->SYMBOL_TAXI : cfg->SYMBOL_CAR;
             render_cell(cars[i].row, cars[i].col, symbol, cfg, grid, lanes);
         }
     }
+}
 
+void render_entities(int **grid, int **lanes, EntityPlayer *player, EntityCar *cars, int *cars_num, Config *cfg, EntityStork *stork) {
+    render_player(player, cfg, grid, lanes);
+    
+    //remove previous stork
+    if(stork->exists){
+        char symbol = get_grid_symbol(stork->prev_row, stork->prev_col, grid, lanes, cfg);
+        render_cell(stork->prev_row, stork->prev_col, symbol, cfg, grid, lanes);
+    }
+
+    render_cars(cars, cars_num, cfg, grid, lanes);
+    
     clear_border(grid, lanes, cfg);
 
-    refresh(); // Render all changes to the screen
+    //draw the stork
+    if(stork->exists){
+        render_cell(stork->row, stork->col, cfg->SYMBOL_STORK, cfg, grid, lanes);
+    }
+    refresh();
 }
+

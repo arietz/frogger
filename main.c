@@ -27,10 +27,50 @@ void set_movement_delays(long * movement_opportunity, long * last_movement){
     movement_opportunity[2] = now - last_movement[2];
 }
 
-void gameloop(EntityPlayer *player, EntityCar * cars, int **grid, int **lanes, int *cars_num, Config * cfg, int * level, int * points) {
+int sgn(int x){
+    if (x > 0) return 1;
+    else if (x < 0) return -1;
+    else return 0;
+}
+
+void move_stork(Config * cfg, EntityStork * stork, EntityPlayer * player){
+    int row_move = sgn(player->row - stork->row);
+    int col_move = sgn(player->col - stork->col);
+    stork->prev_row = stork->row;
+    stork->prev_col = stork->col;
+    stork->row += row_move;
+    stork->col += col_move;
+
+    if(player->row == stork->row && player->col == stork->col){
+        player->exists = 0;
+    }
+}
+
+void process_car_movement(int * spawn_counter, int * cars_num, EntityCar * cars, int ** grid, int ** lanes, Config * cfg, EntityPlayer * player){
+    for (int i = 0; i < *cars_num; i++) {
+        if (cars[i].exists && (cars[i].counter >= cars[i].speed)) {
+            move_car(&cars[i], grid, lanes, player, cfg);
+            cars[i].counter = 1;
+        } else {
+            cars[i].counter++;
+        }
+     }
+
+    compact_cars_array(cars, cars_num, cfg);
+
+    if (*spawn_counter == 3) {
+        spawn_car(lanes, grid, cars_num, cars, cfg);
+        *spawn_counter = 0;
+    } else {
+        *spawn_counter += 1;
+    }
+ 
+}
+
+void gameloop(EntityPlayer *player, EntityCar * cars, int **grid, int **lanes, int *cars_num, Config * cfg, int * level, int * points, EntityStork * stork) {
     //movement delay for [0] - player, [1] - cars, [2] - stork
-    long movement_delays[4] = {0};
-    long last_movement[4] = {0};
+    long movement_delays[3] = {0};
+    long last_movement[3] = {0};
     int spawn_counter = 0;
 
     int key;
@@ -54,30 +94,19 @@ void gameloop(EntityPlayer *player, EntityCar * cars, int **grid, int **lanes, i
 
         // Process car movement
         if (movement_delays[1] >= cfg->CAR_DELAY) {
-            for (int i = 0; i < *cars_num; i++) {
-                if (cars[i].exists && (cars[i].counter >= cars[i].speed)) {
-                    move_car(&cars[i], grid, lanes, player, cfg);
-                    cars[i].counter = 1;
-                } else {
-                    cars[i].counter++;
-                }
-            }
-
-            // Compact the cars array to remove unused slots
-            compact_cars_array(cars, cars_num, cfg);
-
-            // Spawn car
-            if (spawn_counter == 3) {
-                spawn_car(lanes, grid, cars_num, cars, cfg);
-                spawn_counter = 0;
-            } else {
-                spawn_counter++;
-            }
-
+            process_car_movement(&spawn_counter, cars_num, cars, grid, lanes, cfg, player);
             last_movement[1] = current_time_ms();
         }
 
-        render_entities(grid, lanes, player, cars, cars_num, cfg);
+        if (stork->exists){
+            if (movement_delays[2] >= cfg->STORK_DELAY){
+               
+                move_stork(cfg, stork, player);
+                last_movement[2] = current_time_ms();
+            }   
+        }
+        
+        render_entities(grid, lanes, player, cars, cars_num, cfg, stork);
 
         napms(10); // Small delay
     }
@@ -198,14 +227,15 @@ int main() {
 
     //entity creation    
     EntityPlayer player = {0,0,1,0,0,0};
+    EntityStork stork = {0,0,0,0,0};
     int cars_num = 0;
     int level = 1;
     int points = 0;
 
     while (player.exists) {
         clear_cars_array(cars, &cars_num, cfg);
-        map_reset(grid, lanes, &player, cars, &cars_num, cfg->SEED, cfg);
-        gameloop(&player, cars, grid, lanes, &cars_num, cfg, &level, &points);
+        map_reset(grid, lanes, &player, cars, &cars_num, cfg->SEED, cfg, &stork);
+        gameloop(&player, cars, grid, lanes, &cars_num, cfg, &level, &points, &stork);
         if (player.exists) {
             points += level;
             level++;
@@ -213,13 +243,13 @@ int main() {
         player.finished = 0;
     }
 
-    render_entities(grid, lanes, &player, cars, &cars_num, cfg);
+    render_entities(grid, lanes, &player, cars, &cars_num, cfg, &stork);
     
+    napms(1000);
+
     show_player_death(points);
 
-    napms(100);
-
-    // Free allocated memory
+    //free allocated memory
     for (int i = 0; i < cfg->ROWS; i++) {
         free(lanes[i]);
         free(grid[i]);

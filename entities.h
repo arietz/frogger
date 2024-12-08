@@ -23,4 +23,12 @@ typedef struct {
     int prev_col;
 } EntityCar;
 
+typedef struct{
+    int row;
+    int col;
+    int exists;
+    int prev_row;
+    int prev_col;
+} EntityStork;
+
 #endif // ENTITIES_H
