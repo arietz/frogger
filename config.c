@@ -21,8 +21,11 @@ void load_options(const char *filename, Config * cfg) {
             else if (strcmp(key, "PLAYER_DELAY") == 0) cfg->PLAYER_DELAY = atoi(value);
             else if (strcmp(key, "CAR_DELAY") == 0) cfg->CAR_DELAY = atoi(value);
             else if (strcmp(key, "MAX_CARS") == 0) cfg->MAX_CARS = atoi(value);
+            else if (strcmp(key, "RIVERS") == 0) cfg->RIVERS = atoi(value);
             else if (strcmp(key, "SEED") == 0) cfg->SEED = atoi(value);
             else if (strcmp(key, "RENDER_MODE_2X2") == 0) cfg->RENDER_MODE_2X2 = atoi(value);
+            else if (strcmp(key, "TREE_CHANCE") == 0) cfg->TREE_CHANCE = atoi(value);
+
         }
     }
 
@@ -100,4 +103,15 @@ void load_config(Config * cfg){
     load_options("options.txt", cfg);
     load_graphics1("graphics1x1.txt", cfg);
     load_graphics2("graphics2x2.txt", cfg);
+
+    //load colors
+    cfg->COLOR_ROAD = 1;
+    cfg->COLOR_WATER = 2;
+    cfg->COLOR_FOREST = 3;
+    cfg->COLOR_FINISH = 20;
+
+    cfg->COLOR_TREE = 4;
+    cfg->COLOR_CAR = 5;
+    cfg->COLOR_FRIENDLY_CAR = 6;
+    cfg->COLOR_PLAYER = 10;
 }

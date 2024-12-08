@@ -19,7 +19,7 @@ typedef struct {
 
     int counter;    //for counting how many CAR_DELAYS have passed
     int exists;
-    int type;       // 0 - normal, 1 - friendly, 2 - taxi/boat, 3 - taxi/boat with frog
+    int type;       // 0 - normal, 1 - friendly, 2 - taxi, 3 - boat
     int prev_col;
 } EntityCar;
 

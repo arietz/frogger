@@ -11,10 +11,6 @@
 void map_reset(int ** grid, int ** lanes, EntityPlayer * player, EntityCar * cars, int * cars_num, int seed, Config * cfg){
     clear_map(grid, lanes, cfg);
 
-    //set player position
-    player->col = cfg->COLS / 2;
-    player->row = cfg->ROWS - 1;
-
     generate_lanes(seed, lanes, cfg);
 
     for (int i = 0; i < cfg->ROWS; i++){
@@ -27,6 +23,11 @@ void map_reset(int ** grid, int ** lanes, EntityPlayer * player, EntityCar * car
     generate_trees(seed, lanes, grid, cfg);
     generate_cars(lanes, grid, cars, cars_num, cfg);
     generate_boats(lanes, grid, cars, cars_num, cfg);
+
+    //set player position
+    player->col = cfg->COLS / 2;
+    player->row = cfg->ROWS - 1;
+    grid[player->row][player->col] = 3;
 }
 
 void clear_map(int ** grid, int ** lanes, Config * cfg){
@@ -50,12 +51,10 @@ void generate_trees(unsigned int seed, int ** lanes, int ** grid, Config * cfg){
         if (lanes[i][0] != 0) continue;
 
         for(int j = 0; j < cfg->COLS; j++){
-            if (rand() % 20 <= 5) grid[i][j] = 1; 
+            if (j == cfg->COLS / 2) continue;
+            if (rand() % 100 <= cfg->TREE_CHANCE) grid[i][j] = 1; 
         }
     }
-
-    //clear space for starting player
-    grid[cfg->ROWS - 1][cfg->COLS / 2] = 0;
 }
 
 void generate_cars(int ** lanes, int ** grid, EntityCar * cars, int * cars_num, Config * cfg){
@@ -92,7 +91,7 @@ void generate_boats(int ** lanes, int ** grid, EntityCar * cars, int * cars_num,
 
                 int values[6] = {i, j, lanes[i][1], lanes[i][2], 1, 1};
                 init_car(&(cars[*cars_num]), values, cars_num);
-                cars[*cars_num].type = 2;
+                cars[*cars_num].type = 3;
 
                 grid[i][j] = 2;
                 *cars_num += 1;
@@ -121,7 +120,7 @@ void generate_lanes(unsigned int seed, int ** lanes, Config * cfg){
 
             //67% chance for road, 33% chance for river
             if(temp <= 3) lanes[i][0] = 1;         //road
-            else lanes[i][0] = 1;                 //river
+            else lanes[i][0] = cfg->RIVERS ? -1 : 1;                 //river
 
             combo++;
         }
@@ -158,11 +157,12 @@ void fill_lanes(int ** lanes, Config * cfg){
             else lanes[i][1] = rand() % 2;
             
             //lane speed
-            lanes[i][2] = (rand() % 10) + 15;
+            lanes[i][2] = (rand() % 5) + 20;
         }
     }         
 }
 
+//spawns new cars and boats
 void spawn_car(int ** lanes, int ** grid, int * cars_num, EntityCar * cars, Config * cfg){
     //select random row
     int row = (rand() % (cfg->ROWS - 1)) + 1;
@@ -177,13 +177,15 @@ void spawn_car(int ** lanes, int ** grid, int * cars_num, EntityCar * cars, Conf
             int second = (col == 0) ? col + 1 : col - 1;
             int third = (col == 0) ? col + 2 : col - 2;
 
-            if (grid[row][second] != 1 && grid[row][third] != 1) {
+            if (((grid[row][second] == 0 && grid[row][third] == 0) || (grid[row][second] == -1 && grid[row][third] == -1))) {
                 int values[6] = {row, col, lanes[row][1], lanes[row][2], 1, 1};
                 init_car(&cars[*cars_num], values);
 
-                //road cars
-                if (lanes[row][0] == -1) cars[*cars_num].type = 2;
+                //car type
+                if (lanes[row][0] == -1) cars[*cars_num].type = 3;
                 else cars[*cars_num].type = car_type();
+
+                grid[row][col] += (cars[*cars_num].type == 0) ? 1 : cars[*cars_num].type;
 
                 *cars_num += 1;
             }

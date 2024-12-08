@@ -2,6 +2,7 @@
 #include "cars.h"
 #include "entities.h"
 #include "config.h"
+#include "player.h"
 
 void remove_car(EntityCar * car){
     car->row = 0;
@@ -21,11 +22,17 @@ void init_car(EntityCar * car, int values[6]){
     car->exists = values[5];
 }
 
-void handle_car_collision(EntityCar * car, int ** grid, EntityPlayer * player, Config * cfg){
+void handle_car_collisions(EntityCar * car, int ** grid, EntityPlayer * player, Config * cfg){
     int potential_col = (car->direction) ? car->col + 1 : car->col - 1;
 
     // check if car wants to go out of bounds
     if (potential_col == -1 || potential_col == cfg->COLS){
+        if(car->type == 2 || car->type == 3){
+            if (player->row == car->row && player->col == car->col){
+                player->exists = 0;
+            }
+        }
+        
         remove_car(car);
     }
 
@@ -44,24 +51,32 @@ void handle_car_collision(EntityCar * car, int ** grid, EntityPlayer * player, C
             break; 
         default:    //nothing, so car moves
             car->prev_col = car->col;
-            car->col = potential_col;
+            car->col = potential_col;            
             break;
     }
 }
 
 void move_car(EntityCar * car, int ** grid, int ** lanes, EntityPlayer * player, Config * cfg){
     int lane_type = (lanes[car->row][0] == 1) ? 0 : lanes[car->row][0];
+    // int temp = grid[car->row][car->col];
 
     if (car->exists){
         //removes car from grid
-        grid[car->row][car->col] = lane_type;
+        grid[car->row][car->col] -= (car->type == 0) ? 1 : car->type;
 
         //check car collision
-        handle_car_collision(car, grid, player, cfg);
+        handle_car_collisions(car, grid, player, cfg);
     }
 
     //if car still exists move it on grid
-    if (car->exists) grid[car->row][car->col] = (car->type == 0) ? 1 : car->type;
+    if (car->exists) {
+        grid[car->row][car->col] += (car->type == 0) ? 1 : car->type;
+        if(car->type == 2 || car->type == 3){
+            if (player->row == car->row && player->col == car->prev_col){
+                handle_player_collisions(player, grid, 0, car->col-car->prev_col, cfg);
+            }
+        }
+    }
 }
 
 void compact_cars_array(EntityCar * cars, int * cars_num) {

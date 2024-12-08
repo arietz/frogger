@@ -8,8 +8,10 @@ typedef struct {
     int PLAYER_DELAY;
     int CAR_DELAY;
     int MAX_CARS;
+    int RIVERS;
     int SEED;
     int RENDER_MODE_2X2;
+    int TREE_CHANCE;
 
     // 1x1 character configurations
     char SYMBOL_WATER;
@@ -30,6 +32,15 @@ typedef struct {
     char SYMBOL_FRIENDLY_CAR_2X2[2][2];
     char SYMBOL_TAXI_2X2[2][2];
     char SYMBOL_PLAYER_2X2[2][2];
+
+    int COLOR_ROAD;
+    int COLOR_WATER;
+    int COLOR_FOREST;
+    int COLOR_FINISH;
+    int COLOR_TREE;
+    int COLOR_CAR;
+    int COLOR_FRIENDLY_CAR;
+    int COLOR_PLAYER;
 } Config;
 
 // Function prototypes
